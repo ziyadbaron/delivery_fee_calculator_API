@@ -1,212 +1,155 @@
 from main import app
+
 import constants
-
-
+import functions_for_testing
+#
 """ 
-# testing if the User buy in rush-hour :
+# testing the rush-hour threshold :
 
-
-## ( 1 ) when:
-# cart_value 9€          
-# delivery distance 2000   
-# number of items is 4 
-# time friday at 2:59pm (not in rush-hour)
------------------------------------------------------m
-
-## ( 2 ) when:
-# cart_value 9€          
-# delivery distance 2000   
-# number of items is 4  
-# time friday at 3:00pm (in rush-hour)
------------------------------------------------------m
-
-## ( 3 ) when:
-# cart_value 7€          
-# delivery distance 1000   
-# number of items is 10
-# time friday at 5:20pm  (in rush-hour)
------------------------------------------------------
-
-## ( 4 ) when:
-# cart_value 7€          
-# delivery distance 1000   
-# number of items is 10
-# time friday at 6:59pm  (in rush-hour)
------------------------------------------------------m
-
-## ( 5 ) when:
-# cart_value 7€          
-# delivery distance 1000   
-# number of items is 10 
-# time friday at 7:00pm  (not in rush-hour)
------------------------------------------------------m
-
-## ( 6 ) when:
-# cart_value 7€          
-# delivery distance 1000   
-# number of items is 10 
-# time sunday at 3:00pm  (not in rush-hour)
------------------------------------------------------
-
-## ( 7 ) when:
-# cart_value 8€          
-# delivery distance 2000   
-# number of items is 5 
-# time monday at 3:30pm  (not in rush-hour)
------------------------------------------------------
-
-## ( 8 ) when:
-# cart_value 6€          
-# delivery distance 3500   
-# number of items is 6 
-# time wednesday at 5:17pm  (not in rush-hour)
------------------------------------------------------
-
+# when:
+# delivery distance 1000   (there is 2€ charge)
+# number of items is 4     (there is no charge)
+# not in rush-hour         (there is no charge)
 """
 
 
-def test_User_buying_in_rush_hour_1():
+def test_rush_hours_minute_before_rush_hour():
+    '''test if the order was sent 
+        1 minute before rush-hour time
 
-    with app.test_client() as c:
-        response = c.post('/', json={"cart_value": 900,
-                                     "delivery_distance": 2000,
-                                     "number_of_items": 4,
-                                     "time": "2021-10-15T14:59:00Z"})
+        in this example the result must be equal to
+        minimum distance fee '''
 
-        json_response = response.get_json()
-        assert response.status_code == 200
-        assert json_response == {"delivery_fee": 500}
+    with app.test_client() as requests:
+        # Make the test for every day have a rush hour
+        for rush_time in constants.rush_times:
+            day_name = rush_time["rush_day"]
 
+            # bring the beginning time for rush-hour
+            beginning_hours, beginning_minutes = rush_time['begin']
 
-def test_User_buying_in_rush_hour_2():
+            # shift the time by one minute to earlier and make it in ISO format
+            time = functions_for_testing.set_iso_time(day_name,
+                                                      beginning_hours,
+                                                      beginning_minutes,
+                                                      time_shift=-1)
 
-    with app.test_client() as c:
-        response = c.post('/', json={"cart_value": 900,
-                                     "delivery_distance": 2000,
-                                     "number_of_items": 4,
-                                     "time": "2021-10-15T15:00:00Z"})
+            # post request to the server
+            server_response = functions_for_testing.post_request(requests,
+                                                                 rush_hour=None,
+                                                                 time=time,)
 
-        # check the server response status code
-        assert response.status_code == 200
-        
-        # check the result from the server
-        json_response = response.get_json()
-        
-        if constants.rush_times : 
-            fee_multiplier = constants.rush_times[0]["fee_multiplier"]
-        else:
-            fee_multiplier = 1
-        
-        true_result = 500 * fee_multiplier
-        assert json_response == {"delivery_fee": true_result}
+            # check the server response status code
+            assert server_response.status_code == 200
 
-
-def test_User_buying_in_rush_hour_3():
-
-    with app.test_client() as c:
-        response = c.post('/', json={"cart_value": 700,
-                                     "delivery_distance": 1000,
-                                     "number_of_items": 10,
-                                     "time": "2021-10-15T17:20:00Z"})
-
-        # check the server response status code
-        assert response.status_code == 200
-        
-        # check the result from the server
-        json_response = response.get_json()
-        
-        if constants.rush_times : 
-            fee_multiplier = constants.rush_times[0]["fee_multiplier"]
-        else:
-            fee_multiplier = 1
-        
-        true_result = (500 + 300)* fee_multiplier
-        
-        assert json_response == {"delivery_fee": true_result}
+            # check the result from the server
+            server_result = server_response.get_json()
+            true_result = constants.minimum_distance_fee
+            assert server_result == {"delivery_fee": true_result}
 
 
-def test_User_buying_in_rush_hour_4():
+def test_rush_hours_first_minute_rush_hour():
+    '''test if the order was sent 
+        on first minute of rush-hour time
 
-    with app.test_client() as c:
-        response = c.post('/', json={"cart_value": 700,
-                                     "delivery_distance": 1000,
-                                     "number_of_items": 10,
-                                     "time": "2021-10-15T18:59:00Z"})
+        in this example the result must be equal to
+        minimum distance fee * rush-hour fee multiplier'''
 
-        # check the server response status code
-        assert response.status_code == 200
-        
-        # check the result from the server
-        json_response = response.get_json()
-        
-        if constants.rush_times : 
-            fee_multiplier = constants.rush_times[0]["fee_multiplier"]
-        else:
-            fee_multiplier = 1
-        
-        true_result = (300 + 200 + 300)* fee_multiplier
-        
-        assert json_response == {"delivery_fee": true_result}
+    with app.test_client() as requests:
+        # Make the test for every day have a rush hour
+        for rush_time in constants.rush_times:
+            day_name = rush_time["rush_day"]
 
+            # bring the beginning time for rush-hour
+            beginning_hours, beginning_minutes = rush_time['begin']
 
-def test_User_buying_in_rush_hour_5():
+            # make the time in ISO format without shifting the time
+            time = functions_for_testing.set_iso_time(day_name,
+                                                      beginning_hours,
+                                                      beginning_minutes,
+                                                      time_shift=0)
 
-    with app.test_client() as c:
-        response = c.post('/', json={"cart_value": 700,
-                                     "delivery_distance": 1000,
-                                     "number_of_items": 10,
-                                     "time": "2021-10-15T19:00:00Z"})
+            # post request to the server
+            server_response = functions_for_testing.post_request(requests,
+                                                                 rush_hour=None,
+                                                                 time=time,)
 
-        # check the server response status code
-        assert response.status_code == 200
-        
-        # check the result from the server
-        json_response = response.get_json()
-        
-        
-        if constants.rush_times : 
-            fee_multiplier = constants.rush_times[0]["fee_multiplier"]
-        else:
-            fee_multiplier = 1
-        
-        true_result = (300 + 200 + 300)
-        assert json_response == {"delivery_fee": true_result}
+            # check the server response status code
+            assert server_response.status_code == 200
+
+            # check the result from the server
+            server_result = server_response.get_json()
+            true_result = constants.minimum_distance_fee * \
+                rush_time["fee_multiplier"]
+            assert server_result == {"delivery_fee": true_result}
 
 
-def test_User_buying_in_rush_hour_6():
+def test_rush_hours_last_minute_rush_hour():
+    '''test if the order was sent 
+        on last minute rush-hour time
 
-    with app.test_client() as c:
-        response = c.post('/', json={"cart_value": 700,
-                                     "delivery_distance": 1000,
-                                     "number_of_items": 10,
-                                     "time": "2021-10-17T15:00:00Z"})
+        in this example the result must be equal to
+        minimum distance fee * rush-hour fee multiplier'''
 
-        json_response = response.get_json()
-        assert response.status_code == 200
-        assert json_response == {"delivery_fee": 800}
+    with app.test_client() as requests:
+        # Make the test for every day that has a rush hour
+        for rush_time in constants.rush_times:
+            day_name = rush_time["rush_day"]
+
+            # bring the ending time for rush-hour
+            end_hours, end_minutes = rush_time['end']
+
+            # shift the time by one minutes earlier and make it in ISO format
+            time = functions_for_testing.set_iso_time(day_name,
+                                                      end_hours,
+                                                      end_minutes,
+                                                      time_shift=-1)
+
+            # post request to the server
+            server_response = functions_for_testing.post_request(requests,
+                                                                 rush_hour=None,
+                                                                 time=time,)
+
+            # check the server response status code
+            assert server_response.status_code == 200
+
+            # check the result from the server
+            server_result = server_response.get_json()
+            true_result = constants.minimum_distance_fee * \
+                rush_time["fee_multiplier"]
+            assert server_result == {"delivery_fee": true_result}
 
 
-def test_User_buying_in_rush_hour_7():
+def test_rush_hours_minute_after_rush_hour():
+    '''test if the order was sent 
+        on first minute after rush-hour time
 
-    with app.test_client() as c:
-        response = c.post('/', json={"cart_value": 800,
-                                     "delivery_distance": 2000,
-                                     "number_of_items": 5,
-                                     "time": "2021-10-18T15:30:00Z"})
+        in this example the result must be equal to
+        minimum distance fee '''
 
-        json_response = response.get_json()
-        assert response.status_code == 200
-        assert json_response == {"delivery_fee": 650}
+    with app.test_client() as requests:
+        # Make the test for every day that has a rush hour
+        for rush_time in constants.rush_times:
+            day_name = rush_time["rush_day"]
 
+            # bring the ending time for rush-hour
+            end_hours, end_minutes = rush_time['end']
 
-def test_User_buying_in_rush_hour_8():
+            # make the time in ISO format without shifting the time
+            time = functions_for_testing.set_iso_time(day_name,
+                                                      end_hours,
+                                                      end_minutes,
+                                                      time_shift=0)
 
-    with app.test_client() as c:
-        response = c.post('/', json={"cart_value": 600,
-                                     "delivery_distance": 3500,
-                                     "number_of_items": 6,
-                                     "time": "2021-10-20T17:17:00Z"})
+            # post request to the server
+            server_response = functions_for_testing.post_request(requests,
+                                                                 rush_hour=None,
+                                                                 time=time)
 
-        json_response = response.get_json()
-        assert response.status_code == 200
-        assert json_response == {"delivery_fee": 1200}
+            # check the server response status code
+            assert server_response.status_code == 200
+
+            # check the result from the server
+            server_result = server_response.get_json()
+            true_result = constants.minimum_distance_fee
+            assert server_result == {"delivery_fee": true_result}
