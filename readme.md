@@ -10,7 +10,10 @@ The code is designed to
 2. be easy to read and understand
 3. have tests covering almost all the functionalities and their possible variation
 
-In order to make the code more future proof, it 4. won't broke even if some constant values might be deactivated, like cart value fee or rush hour 5. doesn't return fractions of cents as a result
+In order to make the code more future proof, it 
+
+1. won't broke even if some constant values might be deactivated, like cart value fee or rush hour 
+2. doesn't return fractions of cents as a result
 
 To run this code, you have to make sure that you have installed in your computer python3 and its libraries pandas, flask and pytest for testing the code.
 
