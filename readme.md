@@ -1,6 +1,6 @@
 This code is a solution of a wolt task for summer internship 2023.
 
-It is a HTTP API (single endpoint) to calculate a delivery fee.
+It is a HTTP API (single endpoint) to calculate a delivery fee. See more: https://github.com/woltapp/engineering-summer-intern-2023.
 
 The tests of the code include more than 100 different kind of tests to check all the functionality of the code and the validness of the request body with its proper error messages.
 
